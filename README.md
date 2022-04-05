@@ -1,2 +1,2 @@
-# bhg
-Code samples for the No Starch Press Black Hat Go
+End of course Group Project: Steganography
+By Dawson Butts and Isaiah Kiefer

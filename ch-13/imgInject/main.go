@@ -30,6 +30,7 @@ func init() {
 	flags.StringVar(&opts.Key, "key", "", "The enryption key for payload")
 	flags.BoolVar(&opts.Encode, "encode", false, "XOR encode the payload")
 	flags.BoolVar(&opts.Decode, "decode", false, "XOR decode the payload")
+	flags.StringVar(&opts.Specific, "specific", "", "Enable this to edit existing gAMA")
 	flags.Lookup("type").NoOptDefVal = "rNDm"
 	flags.Usage = usage
 	flags.Parse(os.Args[1:])
@@ -62,6 +63,9 @@ func init() {
 	}
 	if opts.Encode && opts.Key == "" {
 		log.Fatal("Fatal: The --encode flag requires a --key value")
+	}
+	if opts.Specific != "" && opts.Payload ==""{
+		log.Fatal("Fatal: The --specific flag requires a --payload value")
 	}
 }
 

@@ -13,4 +13,5 @@ type CmdLineOpts struct {
 	Encode   bool
 	Decode   bool
 	Key      string
+	Specific string
 }

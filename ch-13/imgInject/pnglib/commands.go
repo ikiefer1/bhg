@@ -37,6 +37,19 @@ type MetaChunk struct {
 	Offset int64
 }
 
+// var ancillaryChunks = map[string]int{
+//     "gAMA": 4,
+//     "sBIT": 5,
+//     "bkGD": 10,
+//     "hIST": 50,
+//     "tRNS": 10
+//     "pHYs": 500,
+//     "tIME": 1000,
+// 	"tEXt": 10,
+// 	"zTXt": 10,
+// }
+var ancillaryChunks [9]string = [9]string{"gAMA", "sBIT", "bkGD", "hIST", "tRNS","pHYs","tIME","tEXt", "zTXt" }
+
 //ProcessImage is the wrapper to parse PNG bytes
 func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 	mc.validate(b)
@@ -99,6 +112,37 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 			count++
 		}
 	}
+	if c.Specific != "" {
+		var chunkType string
+		anChunk := false
+		for chunkType != endChunkType {
+			mc.getOffset(b)
+			mc.readChunk(b)
+
+			if mc.chunkTypeToString() == c.Specific{
+				anChunk = true
+				var m MetaChunk
+				m.Chk.Data = []byte(c.Payload)
+				m.Chk.Type = mc.Chk.Type
+				m.Chk.Size = m.createChunkSize()
+				if m.Chk.Size > mc.Chk.Size {
+					fmt.Printf("The payload size is too large for the chosen ancillary chunk")
+					return
+				}
+				m.Chk.CRC = mc.Chk.CRC
+				bm := m.marshalData()
+				bmb := bm.Bytes()
+				// fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+				// fmt.Printf("Payload: % X\n", m.Chk.Data)
+				utils.WriteDataSpecific(b, c, bmb, mc.Offset)
+			}
+		}
+		if !anChunk{
+			fmt.Printf("Your chosen ancillary chunk DOES NOT EXIST for this png file\n")
+		}
+	}
+	//gAMA 4 bytes
+	// 67 41 4d 41
 }
 
 func (mc *MetaChunk) marshalData() *bytes.Buffer {

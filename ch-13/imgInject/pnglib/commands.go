@@ -16,12 +16,14 @@ import (
 
 const (
 	endChunkType = "IEND"
+	fillerAtEnd = "ThisIsToThrowOffTheScentOfTheData"
 )
 
 //Header holds the first byte (aka magic byte)
 type Header struct {
 	Header uint64 //  0:8
 }
+
 
 //Chunk represents a data byte chunk
 type Chunk struct {
@@ -138,9 +140,67 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 			}
 		}
 		if !anChunk{
-			fmt.Printf("Your chosen ancillary chunk DOES NOT EXIST for this png file\n")
+			fmt.Printf("Your chosen an ancillary chunk DOES NOT EXIST for this png file\n")
 		}
 	}
+	//gAMA 4 bytes
+	// 67 41 4d 41
+}
+
+func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
+	mc.validateJpeg(b)
+	fmt.Printf("c.Decode: %v", c.Decode)
+	if c.Encode == false && c.Decode == false{
+		var m MetaChunk
+		m.Chk.Data = []byte(c.Payload + fillerAtEnd)
+		bm := m.marshalDataJpeg()
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+		fmt.Printf("Payload: % X\n", m.Chk.Data)
+		utils.WriteDataJpeg(b, c, bmb)
+	}else if c.Encode == true {
+		var m MetaChunk
+		m.Chk.Data = utils.XorEncode([]byte(c.Payload+fillerAtEnd), c.Key)
+		bm := m.marshalDataJpeg()
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+		fmt.Printf("Payload Encode: % X\n", m.Chk.Data)
+		utils.WriteDataJpeg(b, c, bmb)
+	}else if c.Decode == true {
+		var m MetaChunk
+		//find end file marker
+		var offset uint32
+		offset=2;//because 2 bytes were already read in the validate
+		for {
+			ind, _ := b.ReadByte()
+			offset++
+			if string(ind)=="Ù"{
+				b.Seek(-2,1)//because each read automatically moves it up one so seek(-1,1) would just be Ù
+				ind, _ :=b.ReadByte()
+				if string(ind)=="ÿ" {
+					b.Seek(1,1)//only move one because it will automatically move an additional one
+					break
+				}
+				b.Seek(1,1)
+			}
+		}
+		//m.readChunk(b)
+		imageSize := b.Size()
+		m.readChunkBytes(b, uint32(imageSize)-offset)
+		fmt.Printf("Made it Here after FOR Loop1\n")
+		origData := m.Chk.Data
+		fmt.Printf("Made it Here after FOR Loop2\n")
+		m.Chk.Data = utils.XorDecode(m.Chk.Data, c.Key)
+		fmt.Printf("Made it Here after FOR Loop3\n")
+		bm := m.marshalDataJpeg()
+		fmt.Printf("Made it Here after FOR Loop4\n")
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", origData)
+		fmt.Printf("Payload Decode: % X\n", m.Chk.Data)
+		utils.WriteDataJpeg(b, c, bmb)
+	}
+	
+	
 	//gAMA 4 bytes
 	// 67 41 4d 41
 }
@@ -160,6 +220,16 @@ func (mc *MetaChunk) marshalData() *bytes.Buffer {
 		log.Fatal(err)
 	}
 
+	return bytesMSB
+}
+
+func (mc *MetaChunk) marshalDataJpeg() *bytes.Buffer {
+	bytesMSB := new(bytes.Buffer)
+
+	if err := binary.Write(bytesMSB, binary.BigEndian, mc.Chk.Data); err != nil {
+		log.Fatal(err)
+	}
+	
 	return bytesMSB
 }
 
@@ -231,6 +301,24 @@ func (mc *MetaChunk) validate(b *bytes.Reader) {
 		fmt.Println("Valid PNG so let us continue!")
 	}
 }
+
+func (mc *MetaChunk) validateJpeg(b *bytes.Reader) {
+	//var header Header
+	var header [2]byte 
+
+	if err := binary.Read(b, binary.BigEndian, &header); err != nil {
+		log.Fatal(err)
+	}
+
+	//bArr := make([]byte, 2)
+	//binary.BigEndian.PutUint64(bArr, header)
+	if string(header[0]) != "ÿ" || string(header[1]) != "Ø"{
+		log.Fatal("Provided file is not a valid JPEG format")
+	} else {
+		fmt.Println("Valid JPEG so let us continue!")
+	}
+}
+
 
 func (mc *MetaChunk) createChunkSize() uint32 {
 	return uint32(len(mc.Chk.Data))

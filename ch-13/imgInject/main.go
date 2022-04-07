@@ -31,6 +31,8 @@ func init() {
 	flags.BoolVar(&opts.Encode, "encode", false, "XOR encode the payload")
 	flags.BoolVar(&opts.Decode, "decode", false, "XOR decode the payload")
 	flags.StringVar(&opts.Specific, "specific", "", "Enable this to edit existing gAMA")
+	flags.BoolVar(&opts.Jpeg, "jpeg",false, "Enable if jpeg")
+	flags.BoolVar(&opts.Png, "png",false, "Enable if png")
 	flags.Lookup("type").NoOptDefVal = "rNDm"
 	flags.Usage = usage
 	flags.Parse(os.Args[1:])
@@ -67,10 +69,13 @@ func init() {
 	if opts.Specific != "" && opts.Payload ==""{
 		log.Fatal("Fatal: The --specific flag requires a --payload value")
 	}
+	if !opts.Jpeg && !opts.Png {
+		log.Fatal("Fatal: The --jpg or --png file type must be designated")
+	}
 }
 
 func usage() {
-	fmt.Fprintf(os.Stderr, "Example Usage: %s -i in.png -o out.png --inject --offset 0x85258 --payload 1234\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Example Usage: %s --png -i in.png -o out.png --inject --offset 0x85258 --payload 1234\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Encode Usage: %s -i in.png -o encode.png --inject --offset 0x85258 --payload 1234 --encode --key secret\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Decode Usage: %s -i encode.png -o decode.png --offset 0x85258 --decode --key secret\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Flags: %s {OPTION]...\n", os.Args[0])
@@ -85,5 +90,10 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	png.ProcessImage(bReader, &opts)
+	if opts.Jpeg{
+		png.ProcessImageJpeg(bReader,&opts)
+	}else if opts.Png{
+		png.ProcessImage(bReader, &opts)
+	}
+	
 }

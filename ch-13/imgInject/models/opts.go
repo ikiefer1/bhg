@@ -14,4 +14,6 @@ type CmdLineOpts struct {
 	Decode   bool
 	Key      string
 	Specific string
+	Jpeg	 bool
+	Png      bool
 }

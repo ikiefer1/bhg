@@ -33,6 +33,7 @@ func init() {
 	flags.StringVar(&opts.Specific, "specific", "", "Enable this to edit existing gAMA")
 	flags.BoolVar(&opts.Jpeg, "jpeg",false, "Enable if jpeg")
 	flags.BoolVar(&opts.Png, "png",false, "Enable if png")
+	flags.StringVar(&opts.MultiInject, "multi_inject", "", "This is the ancillary chunks that you would like to inject into")
 	flags.Lookup("type").NoOptDefVal = "rNDm"
 	flags.Usage = usage
 	flags.Parse(os.Args[1:])
@@ -71,6 +72,12 @@ func init() {
 	}
 	if !opts.Jpeg && !opts.Png {
 		log.Fatal("Fatal: The --jpg or --png file type must be designated")
+	}
+	if opts.MultiInject !="" && opts.Payload ==""{
+		log.Fatal("Fatal: The --multi-inject flag requires a --payload value")
+	}
+	if opts.MultiInject !="" && opts.Offset ==""{
+		log.Fatal("Fatal: The --multi-inject flag requires a --offset value")
 	}
 }
 

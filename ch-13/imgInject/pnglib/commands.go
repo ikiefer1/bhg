@@ -55,7 +55,7 @@ var ancillaryChunks [9]string = [9]string{"gAMA", "sBIT", "bkGD", "hIST", "tRNS"
 //ProcessImage is the wrapper to parse PNG bytes
 func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 	mc.validate(b)
-	if (c.Offset != "") && (c.Encode == false && c.Decode == false) {
+	if (c.Offset != "") && (c.Encode == false && c.Decode == false) && c.MultiInject =="" {
 		var m MetaChunk
 		m.Chk.Data = []byte(c.Payload)
 		m.Chk.Type = m.strToInt(c.Type)
@@ -114,29 +114,32 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 			count++
 		}
 	}
-	if c.Specific != "" {
+	if c.Specific != "" && c.Offset=="" && c.Encode==false && c.Decode ==false{
 		var chunkType string
 		anChunk := false
-		for chunkType != endChunkType {
-			mc.getOffset(b)
-			mc.readChunk(b)
-
-			if mc.chunkTypeToString() == c.Specific{
-				anChunk = true
-				var m MetaChunk
-				m.Chk.Data = []byte(c.Payload)
-				m.Chk.Type = mc.Chk.Type
-				m.Chk.Size = m.createChunkSize()
-				if m.Chk.Size > mc.Chk.Size {
-					fmt.Printf("The payload size is too large for the chosen ancillary chunk")
-					return
+		correct := checkForCorrectAncillaryChunk(c.Specific)
+		if correct{
+			for chunkType != endChunkType {
+				mc.getOffset(b)
+				mc.readChunk(b)
+				if mc.chunkTypeToString() == c.Specific{
+					anChunk = true
+					var m MetaChunk
+					m.Chk.Data = []byte(c.Payload)
+					m.Chk.Type = mc.Chk.Type
+					m.Chk.Size = m.createChunkSize()
+					if m.Chk.Size > mc.Chk.Size {
+						fmt.Printf("The payload size is too large for the chosen ancillary chunk")
+						return
+					}
+					m.Chk.CRC = m.createChunkCRC()
+					bm := m.marshalData()
+					bmb := bm.Bytes()
+					// fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+					// fmt.Printf("Payload: % X\n", m.Chk.Data)
+					
+					utils.WriteDataSpecific(b, c, bmb, mc.Offset)
 				}
-				m.Chk.CRC = mc.Chk.CRC
-				bm := m.marshalData()
-				bmb := bm.Bytes()
-				// fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
-				// fmt.Printf("Payload: % X\n", m.Chk.Data)
-				utils.WriteDataSpecific(b, c, bmb, mc.Offset)
 			}
 		}
 		if !anChunk{
@@ -145,6 +148,77 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 	}
 	//gAMA 4 bytes
 	// 67 41 4d 41
+	//Todo 3
+	if c.MultiInject !="" &&c.Offset !=""{
+		var chunkType string
+		trailerChunk:=true
+		anChunk := false
+		wholeData := []byte(c.Payload)
+		ancillaryChunkTypes := strings.Split(c.MultiInject, ",")
+		offsetSlice := make([]int64, 0)
+		dataSlice := make([][]byte, 0)
+		for i, _ := range dataSlice{
+			dataSlice[i] = make([]byte, 0)
+		}
+		
+		for chunkType != endChunkType {
+			mc.getOffset(b)
+			mc.readChunk(b)
+			for i:=0; i<len(ancillaryChunkTypes); i++{
+				
+				if mc.chunkTypeToString() == ancillaryChunkTypes[i]{
+					correct := checkForCorrectAncillaryChunk(mc.chunkTypeToString())
+					
+					if correct {
+						ancillaryChunkTypes = RemoveIndexString(ancillaryChunkTypes, i)
+						i--
+						anChunk = true
+						var m MetaChunk
+						toInject := getPayloadToInject(&wholeData,mc.Chk.Size, &trailerChunk)
+						
+						m.Chk.Data = toInject
+						m.Chk.Type = mc.Chk.Type
+						m.Chk.Size = m.createChunkSize()
+						m.Chk.CRC = mc.Chk.CRC
+						bm := m.marshalData()
+						bmb := bm.Bytes()
+						dataSlice = append(dataSlice, bmb)
+						offsetSlice = append(offsetSlice, mc.Offset)
+						// fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+						// fmt.Printf("Payload: % X\n", m.Chk.Data)
+						// utils.WriteDataSpecificMulti(b, c, bmb, mc.Offset)
+						break 
+					}
+				}
+			}
+			chunkType = mc.chunkTypeToString()
+		}		
+		if !anChunk{
+			fmt.Printf("Your chosen an ancillary chunk DOES NOT EXIST for this png file\n")
+		}
+		if len(ancillaryChunkTypes) > 0{
+			fmt.Print("The following chosen ancillary chunks could not be filled: ")
+			for _, eachChunk := range ancillaryChunkTypes {
+				fmt.Printf("* %s\n", eachChunk)
+			  }
+		}
+		if trailerChunk{//wholeData is not empty
+			var m MetaChunk
+			m.Chk.Data = []byte(wholeData)
+			m.Chk.Type = m.strToInt(c.Type)
+			m.Chk.Size = m.createChunkSize()
+			m.Chk.CRC = m.createChunkCRC()
+			bm := m.marshalData()
+			bmb := bm.Bytes()
+			dataSlice = append(dataSlice, bmb)
+	
+			offsetSlice = append(offsetSlice, mc.Offset)
+			// fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+			// fmt.Printf("Payload: % X\n", m.Chk.Data)
+			//utils.WriteData(b, c, bmb)
+		}
+		utils.WriteDataMulti(b, c, dataSlice, offsetSlice, trailerChunk)
+	}
 }
 
 func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
@@ -338,4 +412,47 @@ func (mc *MetaChunk) createChunkCRC() uint32 {
 func (mc *MetaChunk) strToInt(s string) uint32 {
 	t := []byte(s)
 	return binary.BigEndian.Uint32(t)
+}
+
+func getPayloadToInject(payload *[]byte, orig_size uint32, trailerChunk *bool) []byte{
+	tmp := make([]byte, 0)
+	loopLen := 0
+	if orig_size > uint32(len(*payload)){
+		loopLen =len(*payload)
+		*trailerChunk = false
+	}else if uint32(len(*payload)) > orig_size{
+		loopLen = int(orig_size)
+	}else{
+		loopLen = int(orig_size)
+		//Notify that its finished somehow
+		*trailerChunk = false
+	}
+	i :=0
+	fmt.Printf("BEFORE payload: %v\n", *payload)
+	for i =0; i<loopLen;i++{
+		//tmpString := (*payload)[0]
+		tmp = append(tmp, (*payload)[0])
+		// *payload = strings.Replace(s, (*payload)[0], "", -1)	
+		*payload = RemoveIndexByte(*payload,0)	
+	}
+	fmt.Printf("AFTER payload: %v\n", *payload)
+	return tmp	
+}
+
+func RemoveIndexByte(s []byte, index int) []byte {
+    return append(s[:index], s[index+1:]...)
+}
+
+func RemoveIndexString(s []string, index int) []string {
+    return append(s[:index], s[index+1:]...)
+}
+
+func checkForCorrectAncillaryChunk(chunkName string) bool{
+	correct := false
+	for _, each := range ancillaryChunks{
+		if chunkName == each{
+			correct = true
+		}
+	}
+	return correct
 }

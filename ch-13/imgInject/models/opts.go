@@ -16,4 +16,5 @@ type CmdLineOpts struct {
 	Specific string
 	Jpeg	 bool
 	Png      bool
+	MultiInject string
 }

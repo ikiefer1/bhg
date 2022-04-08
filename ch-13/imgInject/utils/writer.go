@@ -74,6 +74,7 @@ func WriteDataMulti(r *bytes.Reader, c *models.CmdLineOpts, b [][]byte, offsets 
 	r.Seek(0, 0)
 	var tmpOffset int64
 	tmpOffset = 0
+	//for each ancillary chunk read buff, write buff, and write b[i]
 	for i, each := range offsets{
 		numTmp:= each - tmpOffset
 		
@@ -101,7 +102,6 @@ func WriteDataMulti(r *bytes.Reader, c *models.CmdLineOpts, b [][]byte, offsets 
 }
 
 func WriteDataJpeg(r *bytes.Reader, c *models.CmdLineOpts, b []byte) {
-
 
 	w, err := os.OpenFile(c.Output, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {

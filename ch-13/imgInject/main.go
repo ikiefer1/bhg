@@ -85,6 +85,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Example Usage: %s --png -i in.png -o out.png --inject --offset 0x85258 --payload 1234\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Encode Usage: %s -i in.png -o encode.png --inject --offset 0x85258 --payload 1234 --encode --key secret\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Decode Usage: %s -i encode.png -o decode.png --offset 0x85258 --decode --key secret\n", os.Args[0])
+	//example multi_inject --png -i images/gamaog.png -o multi.png --multi_inject gAMA,sBIT --offset 90B --payload 1234
 	fmt.Fprintf(os.Stderr, "Flags: %s {OPTION]...\n", os.Args[0])
 	flags.PrintDefaults()
 	os.Exit(0)

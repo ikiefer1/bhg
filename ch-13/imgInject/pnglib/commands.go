@@ -165,8 +165,11 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 		trailerChunk:=true
 		anChunk := false
 		wholeData := []byte(c.Payload)
+		//split the list of inputted ancillary chunks by comma seperation
 		ancillaryChunkTypes := strings.Split(c.MultiInject, ",")
+		//used for the offsets of all chosen ancillary chunks
 		offsetSlice := make([]int64, 0)
+		//used for the data of all ancillary chunks
 		dataSlice := make([][]byte, 0)
 		for i, _ := range dataSlice{
 			dataSlice[i] = make([]byte, 0)
@@ -175,6 +178,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 		for chunkType != endChunkType {
 			mc.getOffset(b)
 			mc.readChunk(b)
+			//check for each chosen ancillary chunk
 			for i:=0; i<len(ancillaryChunkTypes); i++{
 				
 				if mc.chunkTypeToString() == ancillaryChunkTypes[i]{
@@ -213,7 +217,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 				fmt.Printf("* %s\n", eachChunk)
 			  }
 		}
-		if trailerChunk{//wholeData is not empty
+		if trailerChunk{//wholeData is not empty and we need to fill at the end before the ...IEND
 			var m MetaChunk
 			m.Chk.Data = []byte(wholeData)
 			m.Chk.Type = m.strToInt(c.Type)
@@ -425,6 +429,7 @@ func (mc *MetaChunk) strToInt(s string) uint32 {
 	return binary.BigEndian.Uint32(t)
 }
 
+//takes the payload and chooses how much of it fits in the current ancillary chunk
 func getPayloadToInject(payload *[]byte, orig_size uint32, trailerChunk *bool) []byte{
 	tmp := make([]byte, 0)
 	loopLen := 0
@@ -449,11 +454,9 @@ func getPayloadToInject(payload *[]byte, orig_size uint32, trailerChunk *bool) [
 		// *payload = strings.Replace(s, (*payload)[0], "", -1)	
 		*payload = RemoveIndexByte(*payload,0)	
 	}
+	//adds "x" filler if the payload is smaller than the original chunk size
 	if small {
 		filler := ""
-		fmt.Printf("Data: %v\n", uint32(len(*payload)))
-						fmt.Printf("Size: %v\n", orig_size)
-						fmt.Printf("Difference: %v\n",(int(orig_size) - len(*payload)))
 		for i:=0; i< (int(orig_size) - lengthOfPayload); i++{
 			filler += "x"
 		}

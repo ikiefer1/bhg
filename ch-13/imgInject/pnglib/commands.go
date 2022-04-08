@@ -126,6 +126,17 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 					anChunk = true
 					var m MetaChunk
 					m.Chk.Data = []byte(c.Payload)
+					if uint32(len(m.Chk.Data)) < mc.Chk.Size{
+						fmt.Printf("Data: %v\n", uint32(len(m.Chk.Data)))
+						fmt.Printf("Size: %v\n", mc.Chk.Size)
+						fmt.Printf("Difference: %v\n",(int(mc.Chk.Size) - len(m.Chk.Data)))
+						filler := ""
+						for i:=0; i< (int(mc.Chk.Size) - len(m.Chk.Data)); i++{
+							fmt.Printf("Entered1: %v\n", i)
+							filler += "x"
+						}
+						m.Chk.Data = append(m.Chk.Data, filler...)
+					}
 					m.Chk.Type = mc.Chk.Type
 					m.Chk.Size = m.createChunkSize()
 					if m.Chk.Size > mc.Chk.Size {
@@ -179,7 +190,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 						m.Chk.Data = toInject
 						m.Chk.Type = mc.Chk.Type
 						m.Chk.Size = m.createChunkSize()
-						m.Chk.CRC = mc.Chk.CRC
+						m.Chk.CRC = m.createChunkCRC()
 						bm := m.marshalData()
 						bmb := bm.Bytes()
 						dataSlice = append(dataSlice, bmb)
@@ -417,9 +428,13 @@ func (mc *MetaChunk) strToInt(s string) uint32 {
 func getPayloadToInject(payload *[]byte, orig_size uint32, trailerChunk *bool) []byte{
 	tmp := make([]byte, 0)
 	loopLen := 0
+	small := false
+	lengthOfPayload := 0
 	if orig_size > uint32(len(*payload)){
 		loopLen =len(*payload)
 		*trailerChunk = false
+		small = true
+		lengthOfPayload = loopLen
 	}else if uint32(len(*payload)) > orig_size{
 		loopLen = int(orig_size)
 	}else{
@@ -428,14 +443,22 @@ func getPayloadToInject(payload *[]byte, orig_size uint32, trailerChunk *bool) [
 		*trailerChunk = false
 	}
 	i :=0
-	fmt.Printf("BEFORE payload: %v\n", *payload)
 	for i =0; i<loopLen;i++{
 		//tmpString := (*payload)[0]
 		tmp = append(tmp, (*payload)[0])
 		// *payload = strings.Replace(s, (*payload)[0], "", -1)	
 		*payload = RemoveIndexByte(*payload,0)	
 	}
-	fmt.Printf("AFTER payload: %v\n", *payload)
+	if small {
+		filler := ""
+		fmt.Printf("Data: %v\n", uint32(len(*payload)))
+						fmt.Printf("Size: %v\n", orig_size)
+						fmt.Printf("Difference: %v\n",(int(orig_size) - len(*payload)))
+		for i:=0; i< (int(orig_size) - lengthOfPayload); i++{
+			filler += "x"
+		}
+		tmp = append(tmp, filler...)
+	}
 	return tmp	
 }
 

@@ -160,7 +160,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 	//gAMA 4 bytes
 	// 67 41 4d 41
 	//Todo 3
-	if c.MultiInject !="" &&c.Offset !=""{
+	if c.MultiInject !="" {//&&c.Offset !=""{
 		var chunkType string
 		trailerChunk:=true
 		anChunk := false

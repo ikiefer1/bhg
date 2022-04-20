@@ -76,9 +76,9 @@ func init() {
 	if opts.MultiInject !="" && opts.Payload ==""{
 		log.Fatal("Fatal: The --multi-inject flag requires a --payload value")
 	}
-	if opts.MultiInject !="" && opts.Offset ==""{
-		log.Fatal("Fatal: The --multi-inject flag requires a --offset value")
-	}
+	// if opts.MultiInject !="" && opts.Offset ==""{
+	// 	log.Fatal("Fatal: The --multi-inject flag requires a --offset value")
+	// }
 }
 
 func usage() {

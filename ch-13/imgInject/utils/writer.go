@@ -62,11 +62,11 @@ func WriteDataSpecific(r *bytes.Reader, c *models.CmdLineOpts, b []byte, offset 
 }
 
 func WriteDataMulti(r *bytes.Reader, c *models.CmdLineOpts, b [][]byte, offsets []int64, trailerChunk bool) {
-	offset, err := strconv.ParseInt(c.Offset, 10, 64)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Offset Value: %v\n", offset)
+	//offset, err := strconv.ParseInt(c.Offset, 10, 64)
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
+	// fmt.Printf("Offset Value: %v\n", offset)
 	w, err := os.OpenFile(c.Output, os.O_RDWR|os.O_CREATE, 0777)
 	if err != nil {
 		log.Fatal("Fatal: Problem writing to the output file!")

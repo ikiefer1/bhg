@@ -59,6 +59,7 @@ func WriteDataSpecific(r *bytes.Reader, c *models.CmdLineOpts, b []byte, offset 
 	if err == nil {
 		fmt.Printf("Success: %s created\n", c.Output)
 	}
+	
 }
 
 func WriteDataMulti(r *bytes.Reader, c *models.CmdLineOpts, b [][]byte, offsets []int64, trailerChunk bool) {
@@ -86,7 +87,7 @@ func WriteDataMulti(r *bytes.Reader, c *models.CmdLineOpts, b [][]byte, offsets 
 		w.Write(b[i])
 		fmt.Printf("Bytes[i]: %v\n", b[i])
 		if trailerChunk && i == len(offsets)-1{
-		
+
 		}else{
 		
 			r.Seek(int64(len(b[i])), 1)//skip the existing data

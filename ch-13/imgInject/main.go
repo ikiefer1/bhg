@@ -30,6 +30,8 @@ func init() {
 	flags.StringVar(&opts.Key, "key", "", "The enryption key for payload")
 	flags.BoolVar(&opts.Encode, "encode", false, "XOR encode the payload")
 	flags.BoolVar(&opts.Decode, "decode", false, "XOR decode the payload")
+	flags.BoolVar(&opts.AESencode, "AESencode", false, "AES encode the payload")
+	flags.BoolVar(&opts.AESdecode, "AESdecode", false, "AES decode the payload")
 	flags.StringVar(&opts.Specific, "specific", "", "Enable this to edit existing gAMA")
 	flags.BoolVar(&opts.Jpeg, "jpeg",false, "Enable if jpeg")
 	flags.BoolVar(&opts.Png, "png",false, "Enable if png")
@@ -85,6 +87,8 @@ func usage() {
 	fmt.Fprintf(os.Stderr, "Example Usage: %s --png -i in.png -o out.png --inject --offset 0x85258 --payload 1234\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Encode Usage: %s -i in.png -o encode.png --inject --offset 0x85258 --payload 1234 --encode --key secret\n", os.Args[0])
 	fmt.Fprintf(os.Stderr, "Example Decode Usage: %s -i encode.png -o decode.png --offset 0x85258 --decode --key secret\n", os.Args[0])
+	fmt.Fprintf(os.Stderr, "Example AESencode Usage: --jpeg  -i encode.jpg -o workingTest.jpg --inject --offset 0x85258 --payload secret --AESencode --key dbooty\n")
+	fmt.Fprintf(os.Stderr, "Example AESdecode Usage: --jpeg  -i workingTest.jpg -o workingTestOutput.jpg --offset 0x85258 --AESdecode --key dbooty\n")
 	//example multi_inject --png -i images/gamaog.png -o multi.png --multi_inject gAMA,sBIT --offset 90B --payload 1234
 	fmt.Fprintf(os.Stderr, "Flags: %s {OPTION]...\n", os.Args[0])
 	flags.PrintDefaults()

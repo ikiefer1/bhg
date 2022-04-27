@@ -12,6 +12,8 @@ type CmdLineOpts struct {
 	Type     string
 	Encode   bool
 	Decode   bool
+	AESencode bool
+	AESdecode bool
 	Key      string
 	Specific string
 	Jpeg	 bool

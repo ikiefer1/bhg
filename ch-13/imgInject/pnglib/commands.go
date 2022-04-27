@@ -355,7 +355,7 @@ func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
 		//m.readChunk(b)
 		imageSize := b.Size()
 		fmt.Printf("SAVED PAYLOAD: %d\n", len(c.Payload))
-		m.readChunkBytes(b, uint32(imageSize - 33)-offset)
+		m.readChunkBytes(b, uint32(imageSize)-offset)
 		//fmt.Printf("Made it Here after FOR Loop1\n")
 		origData := m.Chk.Data
 		//fmt.Printf("Made it Here after FOR Loop2\n")

@@ -14,6 +14,8 @@ import (
 	"github.com/blackhat-go/bhg/ch-13/imgInject/utils"
 )
 
+var sizeOfAESpayload int
+
 const (
 	endChunkType = "IEND"
 	fillerAtEnd = "ThisIsToThrowOffTheScentOfTheData"
@@ -55,7 +57,7 @@ var ancillaryChunks [9]string = [9]string{"gAMA", "sBIT", "bkGD", "hIST", "tRNS"
 //ProcessImage is the wrapper to parse PNG bytes
 func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 	mc.validate(b)
-	if (c.Offset != "") && (c.Encode == false && c.Decode == false) && c.MultiInject =="" {
+	if (c.Offset != "") && (c.Encode == false && c.Decode == false && c.AESdecode == false && c.AESencode == false) && c.MultiInject =="" {
 		var m MetaChunk
 		m.Chk.Data = []byte(c.Payload)
 		m.Chk.Type = m.strToInt(c.Type)
@@ -68,6 +70,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 		utils.WriteData(b, c, bmb)
 	}
 	if (c.Offset != "") && c.Encode {
+		fmt.Println("just in plain encode")
 		var m MetaChunk
 		m.Chk.Data = utils.XorEncode([]byte(c.Payload), c.Key)
 		m.Chk.Type = m.strToInt(c.Type)
@@ -80,6 +83,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 		utils.WriteData(b, c, bmb)
 	}
 	if (c.Offset != "") && c.Decode {
+		fmt.Println("just in plain decode")
 		var m MetaChunk
 		offset, _ := strconv.ParseInt(c.Offset, 10, 64)
 		b.Seek(offset, 0)
@@ -93,6 +97,37 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 		fmt.Printf("Payload Decode: % X\n", m.Chk.Data)
 		utils.WriteData(b, c, bmb)
 	}
+
+	if (c.Offset != "") && c.AESencode {
+		fmt.Println("MADE IT TO AESencode")
+		var m MetaChunk
+		sizeOfAESpayload = len(c.Payload) - 39
+		m.Chk.Data = utils.AESencrypt([]byte(c.Payload), c.Key)
+		m.Chk.Type = m.strToInt(c.Type)
+		m.Chk.Size = m.createChunkSize()
+		m.Chk.CRC = m.createChunkCRC()
+		bm := m.marshalData()
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+		fmt.Printf("Payload Encode: % X\n", m.Chk.Data)
+		utils.WriteData(b, c, bmb)
+	}
+	if (c.Offset != "") && c.AESdecode {
+		fmt.Println("MADE IT TO AESdecode")
+		var m MetaChunk
+		offset, _ := strconv.ParseInt(c.Offset , 10, 64) 
+		b.Seek(offset, 64)
+		m.readChunk(b)
+		origData := m.Chk.Data
+		m.Chk.Data = utils.AESdecrypt([]byte(c.Payload), c.Key)
+		m.Chk.CRC = m.createChunkCRC()
+		bm := m.marshalData()
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", origData)
+		fmt.Printf("Payload Decode: % X\n", m.Chk.Data)
+		utils.WriteData(b, c, bmb)
+	}
+
 	if c.Meta {
 		count := 1 //Start at 1 because 0 is reserved for magic byte
 		var chunkType string
@@ -114,7 +149,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 			count++
 		}
 	}
-	if c.Specific != "" && c.Offset=="" && c.Encode==false && c.Decode ==false{
+	if c.Specific != "" && c.Offset=="" && c.Encode==false && c.Decode ==false && c.AESencode ==false && c.AESdecode ==false {
 		var chunkType string
 		anChunk := false
 		correct := checkForCorrectAncillaryChunk(c.Specific)
@@ -239,7 +274,7 @@ func (mc *MetaChunk) ProcessImage(b *bytes.Reader, c *models.CmdLineOpts) {
 func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
 	mc.validateJpeg(b)
 	fmt.Printf("c.Decode: %v", c.Decode)
-	if c.Encode == false && c.Decode == false{
+	if c.Encode == false && c.Decode == false && c.AESencode ==false && c.AESdecode ==false{
 		var m MetaChunk
 		m.Chk.Data = []byte(c.Payload + fillerAtEnd)
 		bm := m.marshalDataJpeg()
@@ -249,7 +284,7 @@ func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
 		utils.WriteDataJpeg(b, c, bmb)
 	}else if c.Encode == true {
 		var m MetaChunk
-		m.Chk.Data = utils.XorEncode([]byte(c.Payload+fillerAtEnd), c.Key)
+		m.Chk.Data = utils.XorEncode([]byte(c.Payload + fillerAtEnd), c.Key)
 		bm := m.marshalDataJpeg()
 		bmb := bm.Bytes()
 		fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
@@ -283,6 +318,51 @@ func (mc *MetaChunk) ProcessImageJpeg(b *bytes.Reader, c *models.CmdLineOpts) {
 		fmt.Printf("Made it Here after FOR Loop3\n")
 		bm := m.marshalDataJpeg()
 		fmt.Printf("Made it Here after FOR Loop4\n")
+		bmb := bm.Bytes()
+		fmt.Printf("Payload Original: % X\n", origData)
+		fmt.Printf("Payload Decode: % X\n", m.Chk.Data)
+		utils.WriteDataJpeg(b, c, bmb)
+	}else if c.AESencode == true {
+		var m MetaChunk
+		sizeOfAESpayload = len(c.Payload) - 39
+		//fmt.Printf("SET PAYLOAD SIZE: %d\n", sizeOfAESpayload)
+		m.Chk.Data = utils.AESencrypt([]byte(c.Payload), c.Key)
+		bm := m.marshalDataJpeg()
+		bmb := bm.Bytes()
+		//fmt.Printf("WHAT IS HERE: % X\n", bmb)
+		fmt.Printf("Payload Original: % X\n", []byte(c.Payload))
+		fmt.Printf("Payload Encode: % X\n", m.Chk.Data)
+		
+		utils.WriteDataJpeg(b, c, bmb)
+	}else if c.AESdecode == true {
+		var m MetaChunk
+		//find end file marker
+		var offset uint32
+		offset=2;//because 2 bytes were already read in the validate
+		for {
+			ind, _ := b.ReadByte()
+			offset++
+			if string(ind)=="Ù"{
+				b.Seek(-2,1)//because each read automatically moves it up one so seek(-1,1) would just be Ù
+				ind, _ :=b.ReadByte()
+				if string(ind)=="ÿ" {
+					b.Seek(1,1)//only move one because it will automatically move an additional one
+					break
+				}
+				b.Seek(1,1)
+			}
+		}
+		//m.readChunk(b)
+		imageSize := b.Size()
+		fmt.Printf("SAVED PAYLOAD: %d\n", len(c.Payload))
+		m.readChunkBytes(b, uint32(imageSize - 33)-offset)
+		//fmt.Printf("Made it Here after FOR Loop1\n")
+		origData := m.Chk.Data
+		//fmt.Printf("Made it Here after FOR Loop2\n")
+		m.Chk.Data = utils.AESdecrypt(m.Chk.Data, c.Key)
+		//fmt.Printf("Made it Here after FOR Loop3\n")
+		bm := m.marshalDataJpeg()
+		//fmt.Printf("Made it Here after FOR Loop4\n")
 		bmb := bm.Bytes()
 		fmt.Printf("Payload Original: % X\n", origData)
 		fmt.Printf("Payload Decode: % X\n", m.Chk.Data)
@@ -481,4 +561,8 @@ func checkForCorrectAncillaryChunk(chunkName string) bool{
 		}
 	}
 	return correct
+}
+
+func getPayloadOffset(payload string) int {
+	return -39 + len(payload)
 }
